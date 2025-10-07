@@ -67,10 +67,6 @@ def calc_row_weights(row, density=DENSITY_STEEL):
 
 
 def build_cuts(df_calc):
-    """
-    Expand the input rows into individual parts (each rectangle gets a unique rid).
-    Produces both web strips (width=web_thk) and flanges (qty*2).
-    """
     cuts = []
     part_uid = 0
     for _, r in df_calc.iterrows():
@@ -78,20 +74,20 @@ def build_cuts(df_calc):
         if qty <= 0 or L <= 0:
             continue
 
-        # Webs
+        # Webs  ✅ width should be WEB HEIGHT (H - 2*flange_thk), not web_thk
         if r['web_thk'] > 0 and r['web_height'] > 0:
             total_web_wt = float(r['web_weight'])
             wt_each = total_web_wt / qty if qty else 0.0
             for _ in range(qty):
                 cuts.append({
                     'rid': part_uid, 'type': 'web',
-                    'thickness': float(r['web_thk']),
-                    'width': float(r['web_thk']),      # strip width
-                    'length': float(L),                # along member length
+                    'thickness': float(r['web_thk']),     # plate thickness for webs
+                    'width': float(r['web_height']),       # <-- FIXED: use web_height here
+                    'length': float(L),
                     'weight_each': wt_each
                 }); part_uid += 1
 
-        # Flanges (two per member)
+        # Flanges (unchanged)
         if r['flange_thk'] > 0 and r['width'] > 0:
             flg_qty = qty * 2
             total_flg_wt = float(r['flange_weight'])
@@ -105,6 +101,7 @@ def build_cuts(df_calc):
                     'weight_each': wt_each
                 }); part_uid += 1
     return cuts
+
 
 
 def splice_segments(width_mm, length_mm, max_len_mm, overlap_mm):
